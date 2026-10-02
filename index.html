@@ -3,8 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
 <title>Pixora — Photography</title>
 <meta name="description" content="Photography portfolio — weddings, portraits, events and commercial photoshoots by Maya Reyes.">
+=======
+<title>PIXORA — Photography Studio</title>
+<meta name="description" content="Photography portfolio — weddings, portraits, events and commercial photoshoots by Sahan at PIXORA.">
+>>>>>>> bf33ce5 (updated)
 
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -51,7 +56,7 @@
 
       <div class="col-lg-6" data-reveal>
         <div class="hero-portrait">
-          <img src="https://placehold.co/760x900/2A2B31/6B6C74?text=%20" alt="Portrait of Maya Reyes" class="img-fluid">
+          <img src="https://placehold.co/760x900/2A2B31/6B6C74?text=%20" alt="Portrait of Sahan" class="img-fluid">
           <span class="hero-badge"><i class="dot dot--teal"></i>Pro photographer</span>
           <p class="hero-tagline"><i class="bi bi-dash-lg"></i>Let's take your photographs to the next level</p>
         </div>
@@ -93,7 +98,7 @@
         <div class="portrait-frame">
           <div class="reg-mark reg-mark--tl reg-mark--sm"></div>
           <div class="reg-mark reg-mark--br reg-mark--sm"></div>
-          <img src="https://placehold.co/560x680/3B49DF/F2EFE9?font=raleway&text=M.R." alt="Portrait of Maya Reyes" class="img-fluid">
+          <img src="https://placehold.co/560x680/3B49DF/F2EFE9?font=raleway&text=S." alt="Portrait of Sahan" class="img-fluid">
         </div>
       </div>
       <div class="col-lg-7" data-reveal>
@@ -133,20 +138,16 @@
       </div>
     </div>
 
-    <!-- Filters -->
-    <div class="filter-bar" data-reveal>
+    <!-- Filters — buttons are generated from the folders in assets/img/portfolio/ -->
+    <div class="filter-bar" id="filterBar" data-reveal>
       <button class="filter-chip active" data-filter="all">All work</button>
-      <button class="filter-chip" data-filter="weddings"><i class="dot dot--cobalt"></i>Weddings</button>
-      <button class="filter-chip" data-filter="portraits"><i class="dot dot--yellow"></i>Portraits</button>
-      <button class="filter-chip" data-filter="events"><i class="dot dot--pink"></i>Events</button>
-      <button class="filter-chip" data-filter="commercial"><i class="dot dot--ink"></i>Commercial</button>
     </div>
 
-    <!-- Grid — cards are generated automatically from assets/portfolio.json.
-         Don't hand-edit this block; add photos to assets/img/portfolio/<category>/ instead. -->
+    <!-- Grid — one card per album, generated automatically from assets/portfolio.json.
+         Don't hand-edit this block; add photos to assets/img/portfolio/<category>/<album>/ instead. -->
     <div class="row g-4 portfolio-grid" id="portfolioGrid"></div>
     <p class="portfolio-empty d-none" id="portfolioEmpty">
-      No photos yet. Add some to <code>assets/img/portfolio/&lt;category&gt;/</code> on GitHub
+      No photos yet. Add an album folder at <code>assets/img/portfolio/&lt;category&gt;/&lt;album&gt;/</code> on GitHub
       and they'll appear here automatically after the next deploy.
     </p>
 
@@ -156,6 +157,7 @@
 <div class="perforation" aria-hidden="true"></div>
 
 <!-- ============ FACEBOOK FEED ============ -->
+<div id="fb-root"></div>
 <section class="section" id="feed">
   <div class="container">
     <div class="row">
@@ -168,10 +170,9 @@
     </div>
 
     <div class="row g-4 feed-grid">
-      <!-- Real Facebook Page Plugin embed. Replace data-href with the client's actual Page URL. -->
+      <!-- Real Facebook Page Plugin embed. data-href points at the studio's Facebook page. -->
       <div class="col-md-6 col-lg-5" data-reveal>
         <div class="clipping clipping--rotate-l">
-          <div id="fb-root"></div>
           <div class="fb-page"
                data-href="https://www.facebook.com/profile.php?id=61592609823869"
                data-tabs="timeline"
@@ -228,7 +229,7 @@
           Tell me a little about your shoot and I'll reply within two business days.
         </p>
         <ul class="contact-list">
-          <li><i class="bi bi-envelope"></i> hello@mayareyesphotography.com</li>
+          <li><i class="bi bi-envelope"></i> <span id="contactEmail">hello@example.com</span></li>
           <li><i class="bi bi-telephone"></i> +94 77 123 4567</li>
           <li><i class="bi bi-geo-alt"></i> Colombo, Sri Lanka — available to travel</li>
         </ul>
@@ -300,16 +301,31 @@
   </div>
 </footer>
 
-<!-- ============ LIGHTBOX MODAL ============ -->
-<div class="modal fade" id="lightboxModal" tabindex="-1" aria-labelledby="lightboxLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
+<!-- ============ ALBUM MODAL (thumbnail grid + photo viewer) ============ -->
+<div class="modal fade" id="albumModal" tabindex="-1" aria-labelledby="albumTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
     <div class="modal-content">
       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       <div class="modal-body">
-        <img src="" id="lightboxImg" class="img-fluid" alt="">
-        <span class="plate-tag" id="lightboxCategory"></span>
-        <h3 id="lightboxTitle"></h3>
-        <p id="lightboxDesc"></p>
+
+        <div class="album-head" id="albumHead">
+          <span class="plate-tag" id="albumCategory"></span>
+          <h3 id="albumTitle"></h3>
+          <p id="albumCount"></p>
+        </div>
+
+        <div class="album-grid" id="albumGrid"></div>
+
+        <div class="album-viewer d-none" id="albumViewer">
+          <button type="button" class="viewer-back" id="viewerBack"><i class="bi bi-arrow-left"></i> Back</button>
+          <div class="album-viewer__stage">
+            <button type="button" class="viewer-nav viewer-nav--prev" id="viewerPrev" aria-label="Previous photo"><i class="bi bi-chevron-left"></i></button>
+            <img src="" id="viewerImg" alt="">
+            <button type="button" class="viewer-nav viewer-nav--next" id="viewerNext" aria-label="Next photo"><i class="bi bi-chevron-right"></i></button>
+          </div>
+          <p class="viewer-caption" id="viewerCaption"></p>
+        </div>
+
       </div>
     </div>
   </div>

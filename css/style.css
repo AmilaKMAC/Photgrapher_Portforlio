@@ -261,6 +261,7 @@ a{ color:inherit; text-decoration:none; }
   object-fit:cover;
   border-radius:6px;
   flex-shrink:0;
+  cursor:pointer;
   transition:opacity .25s ease;
 }
 
@@ -390,6 +391,7 @@ a{ color:inherit; text-decoration:none; }
 .dot--yellow{ background:var(--yellow); }
 .dot--pink{ background:var(--pink); }
 .dot--ink{ background:var(--ink); }
+.dot--teal{ background:var(--teal); }
 
 /* =========================================================
    PORTFOLIO / WORK
@@ -456,6 +458,14 @@ a{ color:inherit; text-decoration:none; }
 .plate-tag--yellow{ background:var(--yellow); color:var(--ink); border-color:var(--yellow); }
 .plate-tag--pink{ background:var(--pink); color:var(--ink); border-color:var(--pink); }
 .plate-tag--ink{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+.plate-tag--teal{ background:var(--teal); color:var(--ink); border-color:var(--teal); }
+
+.album-count{
+  position:absolute; top:12px; right:12px; z-index:2;
+  font-family:var(--font-mono); font-size:.7rem;
+  background:rgba(23,24,28,.78); color:var(--paper);
+  padding:.3rem .6rem; border-radius:var(--radius);
+}
 
 .portfolio-empty{
   font-family:var(--font-mono);
@@ -553,7 +563,7 @@ a{ color:inherit; text-decoration:none; }
 .back-to-top:hover{ color:var(--cobalt); }
 
 /* =========================================================
-   LIGHTBOX MODAL
+   ALBUM MODAL
    ========================================================= */
 .modal-content{
   background:var(--paper);
@@ -561,11 +571,40 @@ a{ color:inherit; text-decoration:none; }
   border:1px solid var(--line);
   padding:1.5rem;
 }
-.modal-body img{ width:100%; margin-bottom:1.25rem; }
-.modal-body h3{ font-family:var(--font-display); font-weight:400; text-transform:uppercase; margin:.75rem 0 .5rem; }
-.modal-body p{ color:var(--ink-soft); }
-.modal-body .plate-tag{ position:static; display:inline-block; }
 .btn-close{ position:absolute; top:1.25rem; right:1.25rem; z-index:5; }
+.album-head{ padding-right:2.5rem; margin-bottom:1.25rem; }
+.album-head .plate-tag{ position:static; display:inline-block; }
+.album-head h3{ font-family:var(--font-display); font-weight:400; text-transform:uppercase; margin:.75rem 0 .25rem; }
+.album-head p{ font-family:var(--font-mono); font-size:.8rem; color:var(--ink-soft); margin:0; }
+
+.album-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));
+  gap:.75rem;
+}
+.album-thumb{ padding:0; border:1px solid var(--line); background:var(--paper-dark); cursor:pointer; overflow:hidden; }
+.album-thumb img{ display:block; width:100%; aspect-ratio:4/5; object-fit:cover; transition:transform .3s ease; }
+.album-thumb:hover img{ transform:scale(1.05); }
+
+.viewer-back{
+  font-family:var(--font-mono); font-size:.78rem; text-transform:uppercase; letter-spacing:.04em;
+  background:transparent; border:1px solid var(--line); padding:.4rem .8rem; margin-bottom:1rem;
+  border-radius:var(--radius); cursor:pointer;
+}
+.viewer-back:hover{ border-color:var(--ink); }
+.album-viewer__stage{ position:relative; display:flex; align-items:center; justify-content:center; background:var(--ink); }
+.album-viewer__stage img{ display:block; max-width:100%; max-height:72vh; object-fit:contain; }
+.viewer-nav{
+  position:absolute; top:50%; transform:translateY(-50%);
+  width:44px; height:44px; border-radius:50%;
+  background:rgba(242,239,233,.9); color:var(--ink); border:0; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; font-size:1.1rem;
+}
+.viewer-nav:hover{ background:var(--teal); }
+.viewer-nav--prev{ left:.75rem; }
+.viewer-nav--next{ right:.75rem; }
+.album-viewer.single .viewer-nav{ display:none; }
+.viewer-caption{ font-family:var(--font-mono); font-size:.8rem; color:var(--ink-soft); margin:.9rem 0 0; text-align:center; }
 
 /* =========================================================
    RESPONSIVE TWEAKS

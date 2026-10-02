@@ -62,131 +62,230 @@ document.addEventListener('DOMContentLoaded', function () {
   }, { threshold: 0.15 });
   revealEls.forEach(function (el) { revealObserver.observe(el); });
 
-  /* ---------- Portfolio: build cards + hero strip from assets/portfolio.json ---------- */
-  var CATEGORY_LABELS = { weddings: 'Weddings', portraits: 'Portraits', events: 'Events', commercial: 'Commercial' };
-  var CATEGORY_COLORS = { weddings: 'cobalt', portraits: 'yellow', events: 'pink', commercial: 'ink' };
+  /* ---------- Portfolio: albums built from assets/portfolio.json ---------- */
+  var COLORS = ['cobalt', 'yellow', 'pink', 'teal', 'ink'];
 
   var portfolioGrid = document.getElementById('portfolioGrid');
   var portfolioEmpty = document.getElementById('portfolioEmpty');
+  var filterBar = document.getElementById('filterBar');
   var shotsRow = document.getElementById('latestShotsRow');
   var shotsPrev = document.getElementById('shotsPrev');
   var shotsNext = document.getElementById('shotsNext');
 
-  function cardHTML(item) {
-    var label = CATEGORY_LABELS[item.category] || item.category;
-    var color = CATEGORY_COLORS[item.category] || 'ink';
+  var categoryInfo = {};   // id -> { label, color }
+  var albums = [];
+
+  function esc(str) {
+    return String(str == null ? '' : str).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  // Encode file paths so folder/file names containing spaces or symbols still load.
+  function url(path) { return encodeURI(path); }
+
+  function albumCardHTML(album, index) {
+    var cat = categoryInfo[album.category] || { label: album.category, color: 'ink' };
+    var countText = album.count === 1 ? '1 photo' : album.count + ' photos';
     return (
-      '<div class="col-md-6 col-lg-4 portfolio-item" data-category="' + item.category + '">' +
-        '<div class="work-card" data-bs-toggle="modal" data-bs-target="#lightboxModal" ' +
-             'data-title="' + item.title + '" data-category-label="' + label + '" data-desc="" data-img="' + item.src + '">' +
-          '<span class="plate-tag plate-tag--' + color + '">' + label + '</span>' +
-          '<img src="' + item.src + '" class="img-fluid" alt="' + item.title + '" loading="lazy">' +
-          '<div class="work-card__caption"><h3>' + item.title + '</h3><p>' + label + '</p></div>' +
+      '<div class="col-md-6 col-lg-4 portfolio-item" data-category="' + esc(album.category) + '">' +
+        '<div class="work-card" role="button" tabindex="0" data-album-index="' + index + '" ' +
+             'aria-label="Open album: ' + esc(album.title) + '">' +
+          '<span class="plate-tag plate-tag--' + cat.color + '">' + esc(cat.label) + '</span>' +
+          (album.count > 1 ? '<span class="album-count"><i class="bi bi-images"></i> ' + album.count + '</span>' : '') +
+          '<img src="' + esc(url(album.cover)) + '" class="img-fluid" alt="' + esc(album.title) + '" loading="lazy">' +
+          '<div class="work-card__caption"><h3>' + esc(album.title) + '</h3><p>' + esc(cat.label) + ' · ' + countText + '</p></div>' +
         '</div>' +
       '</div>'
     );
   }
 
-  function initFilters() {
-    var filterChips = document.querySelectorAll('.filter-chip');
-    filterChips.forEach(function (chip) {
+  function buildFilters(categories) {
+    if (!filterBar) return;
+    var html = '<button class="filter-chip active" data-filter="all">All work</button>';
+    categories.forEach(function (c) {
+      html += '<button class="filter-chip" data-filter="' + esc(c.id) + '">' +
+              '<i class="dot dot--' + categoryInfo[c.id].color + '"></i>' + esc(c.label) + '</button>';
+    });
+    filterBar.innerHTML = html;
+
+    var chips = filterBar.querySelectorAll('.filter-chip');
+    chips.forEach(function (chip) {
       chip.addEventListener('click', function () {
-        filterChips.forEach(function (c) { c.classList.remove('active'); });
+        chips.forEach(function (c) { c.classList.remove('active'); });
         chip.classList.add('active');
         var filter = chip.getAttribute('data-filter');
         document.querySelectorAll('.portfolio-item').forEach(function (item) {
-          var category = item.getAttribute('data-category');
-          item.classList.toggle('hidden', !(filter === 'all' || category === filter));
+          item.classList.toggle('hidden', !(filter === 'all' || item.getAttribute('data-category') === filter));
         });
       });
     });
   }
 
-  var shots = [];
+  /* ----- Hero "Latest shots" strip (album covers, newest first) ----- */
   var shotsIndex = 0;
   function renderShots() {
-    if (!shotsRow || shots.length === 0) return;
+    if (!shotsRow || albums.length === 0) return;
     shotsRow.innerHTML = '';
-    var visibleCount = Math.min(3, shots.length);
+    var visibleCount = Math.min(3, albums.length);
     for (var i = 0; i < visibleCount; i++) {
-      var shot = shots[(shotsIndex + i) % shots.length];
+      var album = albums[(shotsIndex + i) % albums.length];
       var img = document.createElement('img');
-      img.src = shot.src;
-      img.alt = shot.title || 'Portfolio piece';
+      img.src = url(album.cover);
+      img.alt = album.title;
       img.loading = 'lazy';
+      img.tabIndex = 0;
+      img.setAttribute('role', 'button');
+      (function (a) {
+        var open = function () { openAlbum(a); };
+        img.addEventListener('click', open);
+        img.addEventListener('keydown', function (e) { if (e.key === 'Enter') open(); });
+      })(album);
       shotsRow.appendChild(img);
     }
   }
+  if (shotsPrev) shotsPrev.addEventListener('click', function () {
+    if (albums.length === 0) return;
+    shotsIndex = (shotsIndex - 1 + albums.length) % albums.length;
+    renderShots();
+  });
+  if (shotsNext) shotsNext.addEventListener('click', function () {
+    if (albums.length === 0) return;
+    shotsIndex = (shotsIndex + 1) % albums.length;
+    renderShots();
+  });
 
+  /* ----- Album modal: thumbnail grid + full-size viewer with prev/next ----- */
+  var albumModalEl = document.getElementById('albumModal');
+  var albumModal = albumModalEl ? bootstrap.Modal.getOrCreateInstance(albumModalEl) : null;
+  var albumGrid = document.getElementById('albumGrid');
+  var albumViewer = document.getElementById('albumViewer');
+  var viewerImg = document.getElementById('viewerImg');
+  var viewerCaption = document.getElementById('viewerCaption');
+  var currentAlbum = null;
+  var currentPhoto = 0;
+
+  function showGrid() {
+    albumViewer.classList.add('d-none');
+    albumGrid.classList.remove('d-none');
+    document.getElementById('albumHead').classList.remove('d-none');
+  }
+
+  function showPhoto(i) {
+    if (!currentAlbum) return;
+    var n = currentAlbum.photos.length;
+    currentPhoto = (i + n) % n;
+    var photo = currentAlbum.photos[currentPhoto];
+    viewerImg.src = url(photo.src);
+    viewerImg.alt = photo.title;
+    viewerCaption.textContent = currentAlbum.title + '  ·  ' + (currentPhoto + 1) + ' / ' + n;
+    albumViewer.classList.toggle('single', n === 1);
+    albumGrid.classList.add('d-none');
+    document.getElementById('albumHead').classList.add('d-none');
+    albumViewer.classList.remove('d-none');
+  }
+
+  function openAlbum(album) {
+    if (!albumModal) return;
+    currentAlbum = album;
+    var cat = categoryInfo[album.category] || { label: album.category, color: 'ink' };
+
+    var tag = document.getElementById('albumCategory');
+    tag.textContent = cat.label;
+    tag.className = 'plate-tag plate-tag--' + cat.color;
+    document.getElementById('albumTitle').textContent = album.title;
+    document.getElementById('albumCount').textContent =
+      album.count === 1 ? '1 photo' : album.count + ' photos';
+
+    albumGrid.innerHTML = album.photos.map(function (p, i) {
+      return '<button type="button" class="album-thumb" data-photo-index="' + i + '" aria-label="View photo ' + (i + 1) + '">' +
+             '<img src="' + esc(url(p.src)) + '" alt="' + esc(p.title) + '" loading="lazy"></button>';
+    }).join('');
+
+    // One-photo albums skip the grid and open straight to the photo.
+    if (album.photos.length === 1) {
+      showPhoto(0);
+    } else {
+      showGrid();
+    }
+    albumModal.show();
+  }
+
+  if (albumGrid) {
+    albumGrid.addEventListener('click', function (e) {
+      var thumb = e.target.closest('.album-thumb');
+      if (thumb) showPhoto(parseInt(thumb.getAttribute('data-photo-index'), 10));
+    });
+  }
+  var viewerBack = document.getElementById('viewerBack');
+  if (viewerBack) viewerBack.addEventListener('click', function () {
+    if (currentAlbum && currentAlbum.photos.length === 1) { albumModal.hide(); } else { showGrid(); }
+  });
+  var viewerPrev = document.getElementById('viewerPrev');
+  var viewerNext = document.getElementById('viewerNext');
+  if (viewerPrev) viewerPrev.addEventListener('click', function () { showPhoto(currentPhoto - 1); });
+  if (viewerNext) viewerNext.addEventListener('click', function () { showPhoto(currentPhoto + 1); });
+
+  if (albumModalEl) {
+    albumModalEl.addEventListener('keydown', function (e) {
+      if (albumViewer.classList.contains('d-none')) return;
+      if (e.key === 'ArrowLeft') showPhoto(currentPhoto - 1);
+      if (e.key === 'ArrowRight') showPhoto(currentPhoto + 1);
+    });
+    // Touch swipe on the viewer
+    var touchX = null;
+    albumViewer.addEventListener('touchstart', function (e) { touchX = e.changedTouches[0].clientX; }, { passive: true });
+    albumViewer.addEventListener('touchend', function (e) {
+      if (touchX === null) return;
+      var dx = e.changedTouches[0].clientX - touchX;
+      if (Math.abs(dx) > 50) showPhoto(currentPhoto + (dx < 0 ? 1 : -1));
+      touchX = null;
+    }, { passive: true });
+    albumModalEl.addEventListener('hidden.bs.modal', function () { viewerImg.src = ''; });
+  }
+
+  /* ----- Load the manifest and render everything ----- */
   if (portfolioGrid) {
     fetch('assets/portfolio.json')
       .then(function (res) {
         if (!res.ok) throw new Error('manifest not found');
         return res.json();
       })
-      .then(function (items) {
-        if (!items || items.length === 0) {
+      .then(function (data) {
+        var categories = data.categories || [];
+        albums = data.albums || [];
+        if (albums.length === 0) {
           if (portfolioEmpty) portfolioEmpty.classList.remove('d-none');
           return;
         }
-        portfolioGrid.innerHTML = items.map(cardHTML).join('');
-        shots = items;
+        categories.forEach(function (c, i) {
+          categoryInfo[c.id] = { label: c.label, color: COLORS[i % COLORS.length] };
+        });
+        buildFilters(categories);
+        portfolioGrid.innerHTML = albums.map(albumCardHTML).join('');
+        portfolioGrid.addEventListener('click', function (e) {
+          var card = e.target.closest('.work-card');
+          if (card) openAlbum(albums[parseInt(card.getAttribute('data-album-index'), 10)]);
+        });
+        portfolioGrid.addEventListener('keydown', function (e) {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          var card = e.target.closest('.work-card');
+          if (card) { e.preventDefault(); openAlbum(albums[parseInt(card.getAttribute('data-album-index'), 10)]); }
+        });
         renderShots();
       })
       .catch(function () {
-        // Most likely opened via file:// (browsers block fetch of local JSON that way)
-        // or the manifest hasn't been generated yet. Deploys via the GitHub Action
-        // generate it automatically — see README "Local preview" section.
+        // Most likely opened via file:// or the manifest hasn't been generated yet.
         if (portfolioEmpty) {
           portfolioEmpty.classList.remove('d-none');
           portfolioEmpty.textContent = 'Couldn\'t load the photo list. If you\'re previewing locally, run it through a local server (see README) rather than opening the file directly.';
         }
-      })
-      .finally(function () {
-        initFilters();
       });
-  }
-
-  if (shotsPrev) shotsPrev.addEventListener('click', function () {
-    if (shots.length === 0) return;
-    shotsIndex = (shotsIndex - 1 + shots.length) % shots.length;
-    renderShots();
-  });
-  if (shotsNext) shotsNext.addEventListener('click', function () {
-    if (shots.length === 0) return;
-    shotsIndex = (shotsIndex + 1) % shots.length;
-    renderShots();
-  });
-
-  /* ---------- Lightbox modal population ---------- */
-  var lightboxModal = document.getElementById('lightboxModal');
-  if (lightboxModal) {
-    lightboxModal.addEventListener('show.bs.modal', function (event) {
-      var trigger = event.relatedTarget;
-      if (!trigger) return;
-
-      var img = trigger.getAttribute('data-img');
-      var title = trigger.getAttribute('data-title');
-      var desc = trigger.getAttribute('data-desc');
-      var categoryLabel = trigger.getAttribute('data-category-label');
-
-      document.getElementById('lightboxImg').src = img;
-      document.getElementById('lightboxImg').alt = title || '';
-      document.getElementById('lightboxTitle').textContent = title || '';
-      var descEl = document.getElementById('lightboxDesc');
-      descEl.textContent = desc || '';
-      descEl.classList.toggle('d-none', !desc);
-
-      var catEl = document.getElementById('lightboxCategory');
-      catEl.textContent = categoryLabel || '';
-      catEl.className = 'plate-tag'; // reset
-      var colorMap = { Weddings: 'plate-tag--cobalt', Portraits: 'plate-tag--yellow', Events: 'plate-tag--pink', Commercial: 'plate-tag--ink' };
-      if (colorMap[categoryLabel]) catEl.classList.add(colorMap[categoryLabel]);
-    });
   }
 
   /* ---------- Contact form validation + AJAX submit (Formspree) ---------- */
   var form = document.getElementById('contactForm');
+  var emailEl = document.getElementById('contactEmail');
+  var contactEmail = emailEl ? emailEl.textContent.trim() : 'us';
   var statusEl = document.getElementById('formStatus');
 
   if (form) {
@@ -221,10 +320,10 @@ document.addEventListener('DOMContentLoaded', function () {
           form.reset();
           form.classList.remove('was-validated');
         } else {
-          statusEl.textContent = 'Something went wrong sending that. Please try again or email hello@mayareyesdesign.com directly.';
+          statusEl.textContent = 'Something went wrong sending that. Please try again or email ' + contactEmail + ' directly.';
         }
       }).catch(function () {
-        statusEl.textContent = 'Something went wrong sending that. Please try again or email hello@mayareyesdesign.com directly.';
+        statusEl.textContent = 'Something went wrong sending that. Please try again or email ' + contactEmail + ' directly.';
       });
     }, false);
   }
